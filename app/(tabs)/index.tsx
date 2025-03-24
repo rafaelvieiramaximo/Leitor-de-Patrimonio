@@ -10,7 +10,6 @@ export default function App() {
   const [codes, setCodes] = useState<string[]>([]);
   const [showScanner, setShowScanner] = useState(true);
 
-  // Solicitar permissão para usar a câmera
   useEffect(() => {
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
@@ -18,12 +17,10 @@ export default function App() {
     })();
   }, []);
 
-  // Carregar códigos armazenados ao iniciar o app
   useEffect(() => {
     loadCodes();
   }, []);
 
-  // Função para carregar códigos do cache
   const loadCodes = async () => {
     try {
       const storedCodes = await AsyncStorage.getItem('@codes');
@@ -35,7 +32,6 @@ export default function App() {
     }
   };
 
-  // Função para salvar códigos no cache
   const saveCode = async (code: string) => {
     try {
       const newCodes = [...codes, code];
@@ -46,7 +42,6 @@ export default function App() {
     }
   };
 
-  // Função para lidar com a leitura do código de barras
   const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
     setScanned(true);
     if (!codes.includes(data)) {
@@ -55,13 +50,11 @@ export default function App() {
     alert(`Código lido: ${data}`);
   };
 
-  // Função para gerar relatório
   const generateReport = () => {
     const report = codes.join('\n');
     alert('Relatório:\n' + report);
   };
 
-  // Verificar permissão da câmera
   if (hasPermission === null) {
     return <Text>Solicitando permissão para acessar a câmera...</Text>;
   }
@@ -77,13 +70,10 @@ export default function App() {
       </Appbar.Header>
       <View style={styles.container}>
         {showScanner ? (
-           <CameraView
-           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-           barcodeScannerSettings={{
-             barcodeTypes: ["qr"],
-           }}
-           style={StyleSheet.absoluteFillObject}
-         />
+          <CameraView
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            style={StyleSheet.absoluteFillObject}
+          />
         ) : (
           <ScrollView>
             <List.Section>
@@ -94,9 +84,7 @@ export default function App() {
             </List.Section>
           </ScrollView>
         )}
-        {scanned && (
-          <Button title="Escanear Novamente" onPress={() => setScanned(false)} />
-        )}
+        {scanned && <Button title="Escanear Novamente" onPress={() => setScanned(false)} />}
         <Button
           title={showScanner ? 'Ver Relatório' : 'Voltar ao Scanner'}
           onPress={() => setShowScanner(!showScanner)}
