@@ -1,74 +1,114 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, Button, ScrollView } from 'react-native';
+import { Camera, CameraView } from 'expo-camera';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Provider as PaperProvider, Appbar, List } from 'react-native-paper';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+export default function App() {
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
+  const [codes, setCodes] = useState<string[]>([]);
+  const [showScanner, setShowScanner] = useState(true);
 
-export default function HomeScreen() {
+  // Solicitar permissão para usar a câmera
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
+
+  // Carregar códigos armazenados ao iniciar o app
+  useEffect(() => {
+    loadCodes();
+  }, []);
+
+  // Função para carregar códigos do cache
+  const loadCodes = async () => {
+    try {
+      const storedCodes = await AsyncStorage.getItem('@codes');
+      if (storedCodes !== null) {
+        setCodes(JSON.parse(storedCodes));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar códigos:', error);
+    }
+  };
+
+  // Função para salvar códigos no cache
+  const saveCode = async (code: string) => {
+    try {
+      const newCodes = [...codes, code];
+      setCodes(newCodes);
+      await AsyncStorage.setItem('@codes', JSON.stringify(newCodes));
+    } catch (error) {
+      console.error('Erro ao salvar código:', error);
+    }
+  };
+
+  // Função para lidar com a leitura do código de barras
+  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+    setScanned(true);
+    if (!codes.includes(data)) {
+      saveCode(data);
+    }
+    alert(`Código lido: ${data}`);
+  };
+
+  // Função para gerar relatório
+  const generateReport = () => {
+    const report = codes.join('\n');
+    alert('Relatório:\n' + report);
+  };
+
+  // Verificar permissão da câmera
+  if (hasPermission === null) {
+    return <Text>Solicitando permissão para acessar a câmera...</Text>;
+  }
+  if (hasPermission === false) {
+    return <Text>Sem acesso à câmera</Text>;
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <PaperProvider>
+      <Appbar.Header>
+        <Appbar.Content title="Leitor de Códigos" />
+        <Appbar.Action icon="file" onPress={generateReport} />
+      </Appbar.Header>
+      <View style={styles.container}>
+        {showScanner ? (
+           <CameraView
+           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+           barcodeScannerSettings={{
+             barcodeTypes: ["qr"],
+           }}
+           style={StyleSheet.absoluteFillObject}
+         />
+        ) : (
+          <ScrollView>
+            <List.Section>
+              <List.Subheader>Códigos Lidos</List.Subheader>
+              {codes.map((code, index) => (
+                <List.Item key={index} title={code} />
+              ))}
+            </List.Section>
+          </ScrollView>
+        )}
+        {scanned && (
+          <Button title="Escanear Novamente" onPress={() => setScanned(false)} />
+        )}
+        <Button
+          title={showScanner ? 'Ver Relatório' : 'Voltar ao Scanner'}
+          onPress={() => setShowScanner(!showScanner)}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </View>
+    </PaperProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    justifyContent: 'center',
   },
 });
